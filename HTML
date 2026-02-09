@@ -41,3 +41,117 @@ document.addEventListener('click', function(event) {
 
 // Attach window resize handler
 window.addEventListener('resize', handleResize);
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Urban Clicker</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #ui { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px 4px #000; pointer-events: none; }
+        #click-area { position: absolute; bottom: 40px; width: 100%; text-align: center; }
+        button { 
+            padding: 20px 40px; font-size: 24px; font-weight: bold; 
+            background: #27ae60; color: white; border: none; border-radius: 10px;
+            cursor: pointer; pointer-events: auto; transition: transform 0.1s;
+            box-shadow: 0 5px #1e8449;
+        }
+        button:active { transform: translateY(4px); box-shadow: 0 2px #1e8449; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1 style="font-size: 40px; margin: 0;">Bank: $<span id="score">0</span></h1>
+        <p><b>WASD</b> to Walk around the City</p>
+    </div>
+
+    <div id="click-area">
+        <button onclick="earnMoney()">CLICK TO HUSTLE</button>
+    </div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // SCENE SETUP
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222); // Dark urban night
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // LIGHTS
+        const sun = new THREE.DirectionalLight(0xffffff, 1);
+        sun.position.set(5, 10, 7.5);
+        scene.add(sun);
+        scene.add(new THREE.AmbientLight(0x404040, 2));
+
+        // THE STREET
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(200, 200),
+            new THREE.MeshStandardMaterial({ color: 0x111111 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // THE PLAYER
+        const player = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 2, 1),
+            new THREE.MeshStandardMaterial({ color: 0x00ff88 })
+        );
+        player.position.y = 1;
+        scene.add(player);
+
+        // GENERATE BUILDINGS
+        for(let i = 0; i < 40; i++) {
+            const height = Math.random() * 15 + 5;
+            const building = new THREE.Mesh(
+                new THREE.BoxGeometry(5, height, 5),
+                new THREE.MeshStandardMaterial({ color: 0x444444 })
+            );
+            building.position.set(Math.random() * 80 - 40, height/2, Math.random() * 80 - 40);
+            // Don't put buildings on the player start
+            if(Math.abs(building.position.x) > 5) scene.add(building);
+        }
+
+        // GAME LOGIC
+        let money = 0;
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        window.earnMoney = () => {
+            money += 1;
+            document.getElementById('score').innerText = money;
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Movement
+            if(keys['KeyW']) player.position.z -= 0.15;
+            if(keys['KeyS']) player.position.z += 0.15;
+            if(keys['KeyA']) player.position.x -= 0.15;
+            if(keys['KeyD']) player.position.x += 0.15;
+
+            // Camera follow (Third Person)
+            camera.position.lerp(new THREE.Vector3(player.position.x, player.position.y + 6, player.position.z + 12), 0.1);
+            camera.lookAt(player.position);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
