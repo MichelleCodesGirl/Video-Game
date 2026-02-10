@@ -1,24 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SPACE CITY: TERRAFORMER</title>
+    <title>SPACE CITY: COMPANIONS</title>
     <style>
-        :root { --neon: #00f2ff; --money: #00ff88; --glass: rgba(10, 20, 35, 0.95); }
+        :root { --neon: #00f2ff; --money: #00ff88; --pink: #ff00ff; --glass: rgba(10, 20, 35, 0.98); }
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Orbitron', sans-serif; color: white; }
         
         #hud { 
             position: absolute; top: 30px; left: 30px; 
             padding: 25px; background: var(--glass); 
             border: 1px solid var(--neon); border-left: 8px solid var(--neon);
+            z-index: 100;
         }
         #money-val { font-size: 38px; font-weight: 900; color: var(--money); }
-        #terra-status { margin-top: 10px; font-size: 11px; color: var(--neon); letter-spacing: 2px; }
+        #pet-status { margin-top: 10px; font-size: 11px; color: var(--neon); letter-spacing: 2px; }
 
         .label {
             position: absolute; text-align: center; pointer-events: none;
             color: var(--neon); font-size: 11px; font-weight: 900;
             background: rgba(0,0,0,0.9); padding: 10px 15px; border: 1px solid var(--neon);
-            transform: translate(-50%, -100%); border-radius: 4px;
+            transform: translate(-50%, -100%); border-radius: 4px; z-index: 50;
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
@@ -26,9 +27,9 @@
 <body>
 
     <div id="hud">
-        <div style="font-size: 9px; opacity: 0.6; letter-spacing: 3px;">PLANETARY CONTROL</div>
-        <span id="money-val">§ 75,000</span>
-        <div id="terra-status">SURFACE: TITANIUM GRID</div>
+        <div style="font-size: 9px; opacity: 0.6; letter-spacing: 3px;">COLONY OVERSEER</div>
+        <span id="money-val">§ 1,000,000</span>
+        <div id="pet-status">DRONE STATUS: SYNCHRONIZED</div>
     </div>
 
     <div id="labels"></div>
@@ -44,9 +45,9 @@
         scene.background = new THREE.Color(0x010206);
         
         const aspect = window.innerWidth / window.innerHeight;
-        const d = 80;
-        const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 2000);
-        camera.position.set(150, 150, 150);
+        const d = 110;
+        const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 3000);
+        camera.position.set(200, 200, 200);
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -54,121 +55,81 @@
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         document.body.appendChild(renderer.domElement);
 
-        const amb = new THREE.AmbientLight(0x4060ff, 0.4);
-        scene.add(amb);
-        const sun = new THREE.DirectionalLight(0xffffff, 3);
-        sun.position.set(50, 150, 50);
+        scene.add(new THREE.AmbientLight(0x4060ff, 0.5));
+        const sun = new THREE.DirectionalLight(0xffffff, 2);
+        sun.position.set(100, 200, 100);
         scene.add(sun);
 
-        // --- TERRAFORMING FLOOR ---
-        const floorGeo = new THREE.BoxGeometry(300, 2, 300);
-        const floorMat = new THREE.MeshStandardMaterial({color: 0x111115, roughness: 0.7});
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.position.y = -1;
-        scene.add(floor);
-        const grid = new THREE.GridHelper(300, 60, 0x00f2ff, 0x050505);
-        scene.add(grid);
-
-        // --- PLAYER ---
+        // --- PLAYER & DRONE ---
         const player = new THREE.Group();
-        const pBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.6, 1.2), new THREE.MeshStandardMaterial({color: 0xffffff}));
-        pBody.position.y = 1.2;
-        const pHair = new THREE.Mesh(new THREE.SphereGeometry(0.55), new THREE.MeshStandardMaterial({color: 0xe6be8a}));
-        pHair.position.y = 2.2;
-        const pHighlight = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.3), new THREE.MeshStandardMaterial({color: 0xff00ff}));
-        pHighlight.position.set(0.3, 2.3, 0.1);
-        player.add(pBody, pHair, pHighlight);
+        const pBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.8, 1.5), new THREE.MeshStandardMaterial({color: 0x111111}));
+        pBody.position.y = 1.5;
+        const pHair = new THREE.Mesh(new THREE.SphereGeometry(0.75), new THREE.MeshStandardMaterial({color: 0xff00ff}));
+        pHair.position.y = 2.8;
+        player.add(pBody, pHair);
         scene.add(player);
 
-        let money = 75000, income = 2500;
-        const keys = {}, pads = [];
-        let terraMode = 0; // 0: Metal, 1: Grass, 2: Mars
+        // Aero-Drone (The Pet)
+        const drone = new THREE.Group();
+        const dBody = new THREE.Mesh(new THREE.IcosahedronGeometry(0.6, 1), new THREE.MeshStandardMaterial({color: 0x00f2ff, emissive: 0x00f2ff, emissiveIntensity: 2}));
+        const dRing = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.1), new THREE.MeshBasicMaterial({color: 0xff00ff}));
+        dRing.rotation.x = Math.PI/2;
+        drone.add(dBody, dRing);
+        scene.add(drone);
 
-        function createPad(x, z, cost, name, onBuy) {
+        // --- WORLD ---
+        let money = 1000000;
+        const keys = {}, pads = [];
+
+        // Glass Road with Conduits
+        function createGlassRoad(x, z, len) {
             const group = new THREE.Group();
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(6, 0.3, 16), new THREE.MeshBasicMaterial({color: 0x00f2ff}));
-            ring.rotation.x = -Math.PI/2;
-            group.add(ring);
-            group.position.set(x, 0.2, z);
-            const div = document.createElement('div');
-            div.className = 'label';
-            div.innerHTML = `${name}<br>§${cost.toLocaleString()}`;
-            document.getElementById('labels').appendChild(div);
-            group.userData = { cost, onBuy, div, active: true };
+            const glass = new THREE.Mesh(new THREE.BoxGeometry(len, 0.2, 15), new THREE.MeshStandardMaterial({color: 0x00f2ff, transparent: true, opacity: 0.2}));
+            const conduit = new THREE.Mesh(new THREE.BoxGeometry(len, 0.1, 1), new THREE.MeshBasicMaterial({color: 0xff00ff}));
+            conduit.position.y = -1;
+            group.add(glass, conduit);
+            group.position.set(x, 0, z);
             scene.add(group);
-            pads.push(group);
         }
 
-        // --- TERRAFORMING HUB ---
-        createPad(0, -40, 10000, "TERRAFORMING HUB", () => {
-            const hub = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(8, 10, 5), new THREE.MeshStandardMaterial({color: 0x444444}));
-            const orb = new THREE.Mesh(new THREE.SphereGeometry(4), new THREE.MeshBasicMaterial({color: 0x00f2ff, wireframe: true}));
-            orb.position.y = 8;
-            hub.add(base, orb); hub.position.set(0, 0, -40);
-            scene.add(hub);
+        // Digital Willow Tree
+        function createHoloTree(x, z) {
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.5, 5), new THREE.MeshBasicMaterial({color: 0x00f2ff, wireframe: true}));
+            const leaves = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 8), new THREE.MeshBasicMaterial({color: 0x00f2ff, transparent: true, opacity: 0.4, wireframe: true}));
+            leaves.position.y = 4;
+            tree.add(trunk, leaves);
+            tree.position.set(x, 0, z);
+            scene.add(tree);
+        }
 
-            // Special logic: stand here to cycle terrain
-            setInterval(() => {
-                if(player.position.distanceTo(new THREE.Vector3(0,0,-40)) < 10) {
-                    terraMode = (terraMode + 1) % 3;
-                    if(terraMode === 0) { floorMat.color.set(0x111115); document.getElementById('terra-status').innerText = "SURFACE: TITANIUM GRID"; }
-                    if(terraMode === 1) { floorMat.color.set(0x228b22); document.getElementById('terra-status').innerText = "SURFACE: BIOSPHERE ALPHA"; }
-                    if(terraMode === 2) { floorMat.color.set(0x8b2222); document.getElementById('terra-status').innerText = "SURFACE: MARS CRIMSON"; }
-                }
-            }, 3000);
-        });
+        const floor = new THREE.Mesh(new THREE.BoxGeometry(500, 2, 500), new THREE.MeshStandardMaterial({color: 0x050505}));
+        floor.position.y = -2;
+        scene.add(floor);
 
-        // --- HIGH-DETAIL BUILDINGS ---
-        createPad(-50, 50, 60000, "BIO-DOME ARC", () => {
-            const dome = new THREE.Group();
-            const glass = new THREE.Mesh(new THREE.SphereGeometry(15, 32, 16, 0, Math.PI*2, 0, Math.PI/2), 
-                new THREE.MeshStandardMaterial({color: 0x00f2ff, transparent: true, opacity: 0.3}));
-            const structure = new THREE.Mesh(new THREE.TorusGeometry(15, 0.5, 16, 100), new THREE.MeshStandardMaterial({color: 0x888888}));
-            structure.rotation.x = Math.PI/2;
-            dome.add(glass, structure);
-            dome.position.set(-50, 0, 50);
-            scene.add(dome);
-            income += 8000;
-        });
-
-        createPad(50, -50, 100000, "COMMUNICATIONS SPIRE", () => {
-            const spire = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(2, 5, 60), new THREE.MeshStandardMaterial({color: 0x222222}));
-            body.position.y = 30;
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(8, 1), new THREE.MeshStandardMaterial({color: 0x00f2ff, emissive: 0x00f2ff}));
-            ring.position.y = 50;
-            spire.add(body, ring);
-            spire.position.set(50, 0, -50);
-            scene.add(spire);
-            income += 15000;
-        });
+        createGlassRoad(0, 0, 200);
+        createHoloTree(30, 20);
+        createHoloTree(-30, -20);
 
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
         function animate() {
             requestAnimationFrame(animate);
-            const speed = 0.8;
-            if(keys['KeyW']) { player.position.x -= speed; player.position.z -= speed; player.rotation.y = Math.PI * 0.75; }
-            if(keys['KeyS']) { player.position.x += speed; player.position.z += speed; player.rotation.y = -Math.PI * 0.25; }
-            if(keys['KeyA']) { player.position.x -= speed; player.position.z += speed; player.rotation.y = Math.PI * 1.25; }
-            if(keys['KeyD']) { player.position.x += speed; player.position.z -= speed; player.rotation.y = Math.PI * 0.25; }
+            const speed = 1.2;
+            if(keys['KeyW']) { player.position.x -= speed; player.position.z -= speed; }
+            if(keys['KeyS']) { player.position.x += speed; player.position.z += speed; }
+            if(keys['KeyA']) { player.position.x -= speed; player.position.z += speed; }
+            if(keys['KeyD']) { player.position.x += speed; player.position.z -= speed; }
 
-            money += income/60;
+            // Drone AI (Smoothly follow player)
+            const targetPos = player.position.clone().add(new THREE.Vector3(5, 6 + Math.sin(Date.now() * 0.003) * 1, 5));
+            drone.position.lerp(targetPos, 0.05);
+            drone.rotation.y += 0.02;
+            dRing.rotation.z += 0.1;
+
             document.getElementById('money-val').innerText = "§ " + Math.floor(money).toLocaleString();
-
-            pads.forEach(p => {
-                if(!p.userData.active) return;
-                const v = p.position.clone().add(new THREE.Vector3(0,5,0)).project(camera);
-                p.userData.div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
-                p.userData.div.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
-                if(player.position.distanceTo(p.position) < 8 && money >= p.userData.cost) {
-                    money -= p.userData.cost; p.userData.active = false; p.userData.div.remove(); p.userData.onBuy();
-                }
-            });
-
-            camera.position.lerp(player.position.clone().add(new THREE.Vector3(140, 140, 140)), 0.1);
+            camera.position.lerp(player.position.clone().add(new THREE.Vector3(200, 200, 200)), 0.05);
             renderer.render(scene, camera);
         }
         animate();
