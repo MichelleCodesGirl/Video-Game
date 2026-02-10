@@ -1,42 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SPACE TYCOON: PRIME</title>
+    <title>VOID COLONY | REBOOT</title>
     <style>
-        :root { --neon: #00f2ff; --money: #00ff88; --glass: rgba(0, 10, 20, 0.8); }
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: white; }
+        :root { --neon: #00f2ff; --gold: #ffcc00; --bg: #050508; }
+        body { margin: 0; overflow: hidden; background: var(--bg); font-family: 'Orbitron', sans-serif; color: white; }
         
-        /* CLEAN, MODERN HUD */
+        /* SLEEK MINIMAL HUD */
         #hud { 
-            position: absolute; top: 30px; left: 30px; 
-            padding: 25px; border-radius: 0 20px 0 20px;
-            background: var(--glass); border-left: 6px solid var(--neon);
-            backdrop-filter: blur(10px); pointer-events: none;
+            position: absolute; top: 40px; left: 40px; 
+            padding: 20px; border-left: 4px solid var(--neon);
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            pointer-events: none;
         }
-        #money-val { font-size: 48px; font-weight: 800; color: var(--money); display: block; letter-spacing: -2px; }
-        #income-val { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; }
-        
-        /* HOLOGRAPHIC PRICE TAGS */
-        .price-tag { 
-            position: absolute; background: rgba(0, 242, 255, 0.1); color: var(--neon); 
-            padding: 12px 24px; border: 2px solid var(--neon); font-size: 16px; 
-            font-weight: bold; text-align: center; border-radius: 4px;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); pointer-events: none;
-            transform: translate(-50%, -50%); backdrop-filter: blur(5px);
-        }
+        #money-val { font-size: 42px; font-weight: 900; color: #fff; display: block; }
+        #income-val { font-size: 12px; color: var(--neon); letter-spacing: 2px; }
 
-        #controls { position: absolute; bottom: 30px; right: 30px; font-size: 12px; opacity: 0.5; text-align: right; }
+        .hologram {
+            position: absolute; text-align: center; pointer-events: none;
+            color: var(--neon); text-shadow: 0 0 10px var(--neon);
+            font-weight: bold; transform: translate(-50%, -100%);
+            background: rgba(0, 242, 255, 0.05); padding: 10px; border-radius: 5px;
+        }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <div id="hud">
-        <div id="income-val">Station Earnings</div>
-        <span id="money-val">§ 250</span>
-        <div id="per-sec" style="color: var(--neon)">+§0 / SEC</div>
+        <span id="money-val">0</span>
+        <span id="income-val">STATION OFFLINE</span>
     </div>
 
-    <div id="controls">WASD: MOVE | SPACE: JUMP | E: ORBITAL LASER</div>
     <div id="labels-container"></div>
 
     <script type="importmap">
@@ -46,142 +41,141 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // --- SCENE & LIGHTING ---
+        // --- SCENE SETUP ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x020205);
-        scene.fog = new THREE.Fog(0x020205, 50, 300);
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
         document.body.appendChild(renderer.domElement);
 
-        const light = new THREE.DirectionalLight(0xffffff, 2);
-        light.position.set(10, 50, 10);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x4040ff, 0.5));
+        // --- LIGHTING (REALISTIC SPACE) ---
+        const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+        sun.position.set(50, 100, 50);
+        scene.add(sun);
+        scene.add(new THREE.AmbientLight(0x202040, 0.5));
 
-        // --- THE GRID (REALISTIC BASE) ---
-        const floorGeo = new THREE.CircleGeometry(500, 64);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.8 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
+        // --- ENVIRONMENT ---
+        const floor = new THREE.Mesh(
+            new THREE.CircleGeometry(200, 64),
+            new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9, metalness: 0.2 })
+        );
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
-        const grid = new THREE.GridHelper(1000, 100, 0x222244, 0x111122);
-        scene.add(grid);
+        // Stars
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(10000 * 3);
+        for(let i=0; i<30000; i++) starPos[i] = (Math.random()-0.5)*1000;
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.5})));
 
         // --- PLAYER ---
         const player = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1), new THREE.MeshStandardMaterial({color: 0xffffff}));
+        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1), new THREE.MeshStandardMaterial({color: 0xdddddd}));
         body.position.y = 1;
         player.add(body);
         scene.add(player);
 
-        // --- TYCOON LOGIC ---
-        let money = 250, income = 0, vY = 0, isJumping = false;
-        const keys = {}, buyPads = [], asteroids = [];
+        // --- CLICKER CORE ---
+        const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 0), new THREE.MeshStandardMaterial({color: 0x00f2ff, emissive: 0x00f2ff, emissiveIntensity: 2}));
+        core.position.set(0, 2, 0);
+        scene.add(core);
+
+        // --- STATE ---
+        let money = 0, income = 0, vY = 0, isJumping = false;
+        const keys = {}, buyPads = [];
         const labelContainer = document.getElementById('labels-container');
 
+        // --- TYCOON PAD SYSTEM ---
         function createPad(x, z, cost, name, onBuy) {
-            const pad = new THREE.Group();
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(4, 0.1, 16, 64), new THREE.MeshBasicMaterial({color: 0x00f2ff}));
-            ring.rotation.x = Math.PI/2;
-            pad.add(ring);
-            pad.position.set(x, 0.1, z);
+            const group = new THREE.Group();
+            const plate = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 6), new THREE.MeshStandardMaterial({color: 0x222222}));
+            const light = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.05, 16, 64), new THREE.MeshBasicMaterial({color: 0x00f2ff}));
+            light.rotation.x = Math.PI/2;
+            light.position.y = 0.15;
+            group.add(plate, light);
+            group.position.set(x, 0, z);
             
             const div = document.createElement('div');
-            div.className = 'price-tag';
-            div.innerHTML = `<small>PURCHASE</small><br>${name}<br>§${cost}`;
+            div.className = 'hologram';
+            div.innerHTML = `<span style="font-size:10px; opacity:0.7">UNLOCKED AT</span><br>§${cost}<br><span style="color:white; font-size:16px">${name}</span>`;
             labelContainer.appendChild(div);
 
-            pad.userData = { cost, active: true, onBuy, div };
-            scene.add(pad);
-            buyPads.push(pad);
+            group.userData = { cost, active: true, onBuy, div };
+            scene.add(group);
+            buyPads.push(group);
         }
 
-        // --- BUILDINGS (REALISTIC STYLE) ---
-        createPad(20, 20, 250, "SOLAR ARRAY", () => {
-            income += 25;
-            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 10), new THREE.MeshStandardMaterial({color: 0x333333}));
-            stand.position.set(20, 5, 40);
-            scene.add(stand);
-            const panel = new THREE.Mesh(new THREE.BoxGeometry(12, 0.5, 8), new THREE.MeshStandardMaterial({color: 0x0044ff, emissive: 0x002288}));
-            panel.position.set(20, 10, 40);
-            panel.rotation.x = 0.5;
-            scene.add(panel);
+        // --- THE STARTING BUILD ---
+        createPad(15, 0, 100, "OXYGEN EXTRACTOR", () => {
+            income += 10;
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 8), new THREE.MeshStandardMaterial({color: 0x444444}));
+            b.position.set(15, 4, -10);
+            scene.add(b);
 
-            createPad(-30, 20, 1000, "COMMUNICATIONS DISH", () => {
-                income += 150;
-                const dishBase = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 5), new THREE.MeshStandardMaterial({color: 0x555555}));
-                dishBase.position.set(-30, 2.5, 40);
-                scene.add(dishBase);
-                const dish = new THREE.Mesh(new THREE.SphereGeometry(6, 32, 16, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({color: 0xcccccc, side: THREE.DoubleSide}));
-                dish.position.set(-30, 8, 40);
-                dish.rotation.x = Math.PI + 0.5;
-                scene.add(dish);
+            createPad(-15, 0, 500, "POWER TURBINE", () => {
+                income += 50;
+                const b2 = new THREE.Mesh(new THREE.BoxGeometry(4, 15, 4), new THREE.MeshStandardMaterial({color: 0x666666}));
+                b2.position.set(-15, 7.5, -10);
+                scene.add(b2);
             });
         });
 
-        // --- ASTEROID & LASER ---
-        const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1000), new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0}));
-        scene.add(laser);
-
-        function spawnAsteroid() {
-            const ast = new THREE.Mesh(new THREE.DodecahedronGeometry(2), new THREE.MeshStandardMaterial({color: 0x443322}));
-            ast.position.set((Math.random()-0.5)*150, 40, (Math.random()-0.5)*150);
-            scene.add(ast);
-            asteroids.push(ast);
-        }
-        setInterval(spawnAsteroid, 5000);
-
-        // --- CONTROLS & ANIMATION ---
-        window.addEventListener('keydown', e => {
-            keys[e.code] = true;
-            if(e.code === 'Space' && !isJumping) { vY = 0.45; isJumping = true; }
-            if(e.code === 'KeyE') {
-                laser.position.copy(player.position); laser.position.y = 500; laser.material.opacity = 1;
-                asteroids.forEach((ast, i) => {
-                    if(new THREE.Vector2(player.position.x, player.position.z).distanceTo(new THREE.Vector2(ast.position.x, ast.position.z)) < 10) {
-                        money += 2000; scene.remove(ast); asteroids.splice(i,1);
-                    }
-                });
-                setTimeout(() => laser.material.opacity = 0, 100);
-            }
-        });
+        // --- CONTROLS ---
+        window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
+        window.onclick = () => {
+            const ray = new THREE.Raycaster();
+            const mouse = new THREE.Vector2(0,0); // Center screen click
+            ray.setFromCamera(mouse, camera);
+            if(ray.intersectObject(core).length > 0) {
+                money += 10;
+                core.scale.set(1.2, 1.2, 1.2);
+            }
+        };
 
+        // --- GAME LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-            
-            if(keys['KeyW']) player.translateZ(0.4);
-            if(keys['KeyS']) player.translateZ(-0.4);
+
+            // Movement
+            if(keys['KeyW']) player.translateZ(0.3);
+            if(keys['KeyS']) player.translateZ(-0.3);
             if(keys['KeyA']) player.rotation.y += 0.05;
             if(keys['KeyD']) player.rotation.y -= 0.05;
-
+            
+            if(keys['Space'] && !isJumping) { vY = 0.4; isJumping = true; }
             vY -= 0.02; player.position.y += vY;
             if(player.position.y <= 0) { player.position.y = 0; vY = 0; isJumping = false; }
 
+            // Logic
             money += income/60;
-            document.getElementById('money-val').innerText = "§ " + Math.floor(money);
-            document.getElementById('per-sec').innerText = "+§" + income + " / SEC";
+            core.rotation.y += 0.02;
+            core.scale.lerp(new THREE.Vector3(1,1,1), 0.1);
+            
+            document.getElementById('money-val').innerText = Math.floor(money);
+            document.getElementById('income-val').innerText = income > 0 ? `+§${income}/SEC` : "STATION OFFLINE";
 
-            asteroids.forEach(a => a.position.y -= 0.05);
-
+            // Pads
             buyPads.forEach(pad => {
                 if(!pad.userData.active) return;
-                const v = pad.position.clone().add(new THREE.Vector3(0, 3, 0)).project(camera);
+                const v = pad.position.clone().add(new THREE.Vector3(0, 4, 0)).project(camera);
                 pad.userData.div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
                 pad.userData.div.style.top = (-v.y * 0.5 + 0.5) * window.innerHeight + 'px';
                 
-                if(player.position.distanceTo(pad.position) < 4 && money >= pad.userData.cost) {
+                if(player.position.distanceTo(pad.position) < 3 && money >= pad.userData.cost) {
                     money -= pad.userData.cost; pad.userData.active = false; pad.userData.div.remove();
                     scene.remove(pad); pad.userData.onBuy();
                 }
             });
 
-            camera.position.lerp(new THREE.Vector3(0, 15, -25).applyMatrix4(player.matrixWorld), 0.1);
-            camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 2, 0)));
+            // Camera
+            const ideal = new THREE.Vector3(0, 10, -20).applyMatrix4(player.matrixWorld);
+            camera.position.lerp(ideal, 0.1);
+            camera.lookAt(player.position.clone().add(new THREE.Vector3(0,2,0)));
             renderer.render(scene, camera);
         }
         animate();
